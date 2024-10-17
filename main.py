@@ -10,14 +10,14 @@ def main():
 
     # Define the email parameters.
     email_details = {
-        'to': 'joselito.coutinho@cvt.cv',
+        'to': 'your.email@server.xpto',
         'subject': 'Test Email',
         'message_body': '<p>This is a test email.</p>',
         'html_body': False,
         'attachment_paths': ['pdf-sample.pdf'],
         'cc': [],
         'bcc': [],
-        'from_address': 'DSI-DEV-RPA@cvt.cv'
+        'from_address': 'someone.email@server.xpto'
     }
 
     # Define the alert parameters for the email template.
