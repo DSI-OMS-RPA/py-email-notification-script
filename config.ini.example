@@ -1,0 +1,5 @@
+[SMPT]
+server = your_smtp_server
+port = your_smtp_port
+username = your_username
+password = your_password

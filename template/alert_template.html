@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        /* General styling for mobile responsiveness */
+        @media only screen and (max-width: 600px) {
+            table[class="container"] {
+                width: 100% !important;
+            }
+            td[class="content-cell"] {
+                padding: 15px !important;
+            }
+        }
+
+        /* Hover effect for the button */
+        a.button:hover {
+            background-color: #0056b3 !important;
+        }
+    </style>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 0;">
+
+    <!-- Main content area -->
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f0f2f5; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <!-- Container for the email content -->
+                <table class="container" width="600" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0px 4px 12px rgba(0,0,0,0.05); text-align: center;">
+
+                    <!-- Alert Icon -->
+                    <tr>
+                        <td align="center" style="font-size: 45px; color: {{ alert_color }};">
+                            {% if alert_type == 'success' %}
+                                &#x2714; <!-- Success icon -->
+                            {% elif alert_type == 'warning' %}
+                                &#9888; <!-- Warning icon -->
+                            {% elif alert_type == 'danger' %}
+                                &#9746; <!-- Danger icon -->
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <!-- Alert Title -->
+                    <tr>
+                        <td align="center" style="font-size: 24px; font-weight: bold; color: #333333; padding-bottom: 10px;">
+                            {{ alert_title }}
+                        </td>
+                    </tr>
+
+                    <!-- Alert Message -->
+                    <tr>
+                        <td align="center" style="font-size: 16px; color: #555555; line-height: 1.7; padding-bottom: 8px;">
+                            {{ alert_message }}
+                        </td>
+                    </tr>
+
+                    <!-- File List Section (if files are available) -->
+                    {% if file_names %}
+                    <tr>
+                        <td align="left" style="font-size: 16px; color: #555555; padding-bottom: 20px; text-align: left;">
+                            <strong>Ficheiros processados:</strong>
+                            <ul style="text-align: left; padding-left: 20px; margin-top: 10px; list-style-type: disc;">
+                                {% for file in file_names %}
+                                <li>{{ file }}</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Action Button (optional) -->
+                    {% if alert_link %}
+                    <tr>
+                        <td align="center" style="padding-bottom: 30px;">
+                            <a href="{{ alert_link }}" class="button" style="display: inline-block; padding: 12px 30px; background-color: #007bff; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; border-radius: 5px; transition: background-color 0.3s ease;">Ver Detalhes</a>
+                        </td>
+                    </tr>
+                    {% endif %}
+
+                    <!-- Footer -->
+                    <tr>
+                        <td align="center" style="font-size: 14px; color: #888888; padding-top: 15px; border-top: 1px solid #eeeeee;">
+                            Este é um alerta automático do sistema ETL. <br>Por favor, não responda a este email.
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>
