@@ -7,33 +7,86 @@ from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 from email.mime.base import MIMEBase
 from email import encoders
-from typing import Tuple, List, Dict, Optional, Union
+from typing import Any, Tuple, List, Dict, Optional, Union
 from jinja2 import Environment, FileSystemLoader
+from contextlib import contextmanager
+from pathlib import Path
+from functools import lru_cache
 
-# Set logging for debug.
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Set logging for debug with a more detailed format
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-class DataRetrievalError(Exception):
-    """Custom exception class to handle data retrieval errors."""
+class EmailError(Exception):
+    """Base exception class for email-related errors."""
     pass
 
-class InvalidDataFormatError(Exception):
-    """Custom exception class to handle invalid data format errors."""
+class DataRetrievalError(EmailError):
+    """Exception class to handle data retrieval errors."""
     pass
 
-# Constants
-IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
-EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
-ALERT_COLORS = {
-    'success': '#28a745',
-    'warning': '#ffc107',
-    'danger': '#dc3545',
-    'info': '#17a2b8'
-}
+class InvalidDataFormatError(EmailError):
+    """Exception class to handle invalid data format errors."""
+    pass
 
+class SMTPConnectionError(EmailError):
+    """Exception class to handle SMTP connection errors."""
+    pass
+
+# Constants moved to a class for better organization
+class EmailConstants:
+    IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'}
+    EMAIL_REGEX = re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+    ALERT_COLORS = {
+        'success': '#28a745',
+        'warning': '#ffc107',
+        'danger': '#dc3545',
+        'info': '#17a2b8'
+    }
+    REQUIRED_SMTP_PARAMS = {'server', 'port'}
+
+@contextmanager
+def smtp_connection(configs: Dict[str, str]) -> smtplib.SMTP:
+    """
+    Context manager for SMTP connections.
+
+    Args:
+        configs (Dict[str, str]): The configuration settings for the SMTP server.
+
+    Yields:
+        smtplib.SMTP: The SMTP connection object.
+
+    Raises:
+        SMTPConnectionError: If connection fails.
+    """
+    smtp_server = None
+    try:
+        smtp_server, _ = connect_smtp(configs)
+        yield smtp_server
+    finally:
+        cleanup_connection(smtp_server)
+
+def validate_config(configs: Dict[str, str]) -> None:
+    """
+    Validate SMTP configuration parameters.
+
+    Args:
+        configs (Dict[str, str]): The configuration settings to validate.
+
+    Raises:
+        DataRetrievalError: If required parameters are missing.
+    """
+    missing_params = EmailConstants.REQUIRED_SMTP_PARAMS - set(configs.keys())
+    if missing_params:
+        raise DataRetrievalError(f"Missing required parameters: {missing_params}")
+
+@lru_cache(maxsize=100)
 def is_valid_email(email: str) -> bool:
     """
-    Validate an email address using regex.
+    Validate an email address using regex with caching.
 
     Args:
         email (str): The email address to validate.
@@ -41,7 +94,7 @@ def is_valid_email(email: str) -> bool:
     Returns:
         bool: True if the email address is valid, False otherwise.
     """
-    return bool(EMAIL_REGEX.match(email))
+    return bool(EmailConstants.EMAIL_REGEX.match(email))
 
 def is_image_file(filepath: str) -> bool:
     """
@@ -53,32 +106,29 @@ def is_image_file(filepath: str) -> bool:
     Returns:
         bool: True if the file is an image, False otherwise.
     """
-    return os.path.splitext(filepath)[1].lower() in IMAGE_EXTENSIONS
+    return Path(filepath).suffix.lower() in EmailConstants.IMAGE_EXTENSIONS
 
 def connect_smtp(configs: Dict[str, str]) -> Tuple[smtplib.SMTP, str]:
     """
-    Connects to the SMTP server using credentials fetched from a data source.
+    Connects to the SMTP server using credentials.
 
     Args:
         configs (Dict[str, str]): The configuration settings for the SMTP server.
 
     Returns:
-        Tuple[smtplib.SMTP, str]: A tuple containing the SMTP server object and the username.
+        Tuple[smtplib.SMTP, str]: SMTP server object and username.
 
     Raises:
-        DataRetrievalError: If required parameters are missing.
-        smtplib.SMTPException: If connection to SMTP server fails.
+        SMTPConnectionError: If connection fails.
     """
-    required_params = ['server', 'port']
-    if not all(param in configs for param in required_params):
-        raise DataRetrievalError("One or more required parameters are missing.")
-
-    server = configs['server']
-    port = int(configs['port'])
-    username = None if 'username' not in configs else configs['username']
-    password = None if 'password' not in configs else configs['password']
+    validate_config(configs)
 
     try:
+        server = configs['server']
+        port = int(configs['port'])
+        username = configs.get('username')
+        password = configs.get('password')
+
         if username and password:
             smtp_server = smtplib.SMTP_SSL(server, port)
             smtp_server.login(username, password)
@@ -87,170 +137,211 @@ def connect_smtp(configs: Dict[str, str]) -> Tuple[smtplib.SMTP, str]:
 
         smtp_server.ehlo()
         return smtp_server, username
-    except smtplib.SMTPException as e:
-        logging.error(f"Failed to connect to SMTP server: {e}")
-        raise
+    except (smtplib.SMTPException, ValueError) as e:
+        raise SMTPConnectionError(f"Failed to connect to SMTP server: {e}")
 
-def attach_image(msg: MIMEMultipart, image_path: str) -> None:
+def attach_file(msg: MIMEMultipart, file_path: str) -> None:
     """
-    Attach an image to the email message with a specific Content-ID.
+    Attach a file to the email message.
 
     Args:
         msg (MIMEMultipart): The email message object.
-        image_path (str): The path to the image file.
+        file_path (str): Path to the file to attach.
     """
-    try:
-        with open(image_path, 'rb') as img:
-            part = MIMEImage(img.read())
-            part.add_header('Content-ID', f"<{os.path.basename(image_path)}>")
-            part.add_header('Content-Disposition', 'inline', filename=os.path.basename(image_path))
-            msg.attach(part)
-    except IOError as e:
-        logging.error(f"Failed to attach image {image_path}: {e}")
+    if not Path(file_path).exists():
+        logger.warning(f"Attachment not found: {file_path}")
+        return
 
-def send_email(configs: Dict[str, str], to: Union[str, List[str]], subject: str, message_body: str, html_body: bool = False,
-               attachment_paths: Optional[List[str]] = None, cc: Optional[List[str]] = None,
-               bcc: Optional[List[str]] = None, from_address: Optional[str] = None) -> bool:
+    try:
+        if is_image_file(file_path):
+            with open(file_path, 'rb') as img:
+                part = MIMEImage(img.read())
+                part.add_header('Content-ID', f"<{Path(file_path).name}>")
+                part.add_header('Content-Disposition', 'inline', filename=Path(file_path).name)
+        else:
+            with open(file_path, 'rb') as attachment:
+                part = MIMEBase('application', 'octet-stream')
+                part.set_payload(attachment.read())
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f"attachment; filename= {Path(file_path).name}")
+
+        msg.attach(part)
+    except IOError as e:
+        logger.error(f"Failed to attach file {file_path}: {e}")
+
+def send_email(configs: Dict[str, str], to: Union[str, List[str]], subject: str,
+               message_body: str, html_body: bool = False,
+               attachment_paths: Optional[List[str]] = None,
+               cc: Optional[List[str]] = None,
+               bcc: Optional[List[str]] = None,
+               from_address: Optional[str] = None) -> bool:
     """
     Sends an email with optional attachments.
-
-    Args:
-        configs (Dict[str, str]): The configuration settings for the SMTP server.
-        to (Union[str, List[str]]): The email address(es) of the recipient(s).
-        subject (str): The subject of the email.
-        message_body (str): The body of the email.
-        html_body (bool): Whether the message body is HTML. Defaults to False.
-        attachment_paths (Optional[List[str]]): A list of file paths to attach to the email.
-        cc (Optional[List[str]]): A list of email addresses to send a carbon copy to.
-        bcc (Optional[List[str]]): A list of email addresses to send a blind carbon copy to.
-        from_address (Optional[str]): The email address to send the email from.
-
-    Returns:
-        bool: True if the email was sent successfully, False otherwise.
     """
     attachment_paths = attachment_paths or []
     cc = cc or []
     bcc = bcc or []
 
     try:
-        server, username = connect_smtp(configs)
+        with smtp_connection(configs) as server:
+            msg = MIMEMultipart()
+            username = from_address if from_address and is_valid_email(from_address) else configs.get('username')
 
-        if from_address and is_valid_email(from_address):
-            username = from_address
+            msg['From'] = username
+            msg['To'] = to if isinstance(to, str) else ', '.join(to)
+            msg['Subject'] = subject
 
-        msg = MIMEMultipart()
-        msg['From'] = username
-        msg['To'] = to if isinstance(to, str) else ', '.join(to)
-        msg['Subject'] = subject
+            if cc:
+                msg['Cc'] = ', '.join(cc)
+            if bcc:
+                msg['Bcc'] = ', '.join(bcc)
 
-        if cc:
-            msg['Cc'] = ', '.join(cc)
-        if bcc:
-            msg['Bcc'] = ', '.join(bcc)
+            all_recipients = (to if isinstance(to, list) else [to]) + cc + bcc
+            msg.attach(MIMEText(message_body, 'html' if html_body else 'plain', 'utf-8'))
 
-        all_recipients = (to if isinstance(to, list) else [to]) + cc + bcc
+            for attachment_path in attachment_paths:
+                attach_file(msg, attachment_path)
 
-        msg.attach(MIMEText(message_body, 'html' if html_body else 'plain', 'utf-8'))
-
-        for attachment_path in attachment_paths:
-            if not os.path.exists(attachment_path):
-                logging.warning(f"Attachment not found: {attachment_path}")
-                continue
-
-            if is_image_file(attachment_path):
-                attach_image(msg, attachment_path)
-            else:
-                try:
-                    with open(attachment_path, 'rb') as attachment:
-                        part = MIMEBase('application', 'octet-stream')
-                        part.set_payload(attachment.read())
-                        encoders.encode_base64(part)
-                        part.add_header('Content-Disposition', f"attachment; filename= {os.path.basename(attachment_path)}")
-                        msg.attach(part)
-                except IOError as e:
-                    logging.error(f"Failed to attach file {attachment_path}: {e}")
-
-        send_result = server.sendmail(username, all_recipients, msg.as_string())
-
-        if not send_result:
-            logging.info("Email sent successfully.")
+            server.sendmail(username, all_recipients, msg.as_string())
+            logger.info("Email sent successfully")
             return True
-        else:
-            logging.error(f"Failed to send email to some or all recipients: {send_result}")
-            return False
 
-    except smtplib.SMTPException as e:
-        logging.error(f"Error sending email: {str(e)}")
-        return False
     except Exception as e:
-        logging.error(f"An unexpected error occurred: {str(e)}")
+        logger.error(f"Failed to send email: {str(e)}")
         return False
-    finally:
-        cleanup_connection(server)
 
-def generate_alert(alert_type: str, alert_title: str, alert_message: str, file_names: Optional[List[str]] = None, alert_link: Optional[str] = None) -> str:
+def get_rgba_color(hex_color: str, opacity: float = 1.0) -> str:
+    """
+    Convert hex color to rgba color with opacity.
+
+    Args:
+        hex_color (str): Hex color code (e.g., '#28a745' or '28a745')
+        opacity (float): Opacity value between 0 and 1
+
+    Returns:
+        str: RGBA color string
+    """
+    # Remove '#' if present
+    hex_color = hex_color.lstrip('#')
+
+    # Convert hex to RGB
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+
+    # Return rgba string
+    return f"rgba({r}, {g}, {b}, {opacity})"
+
+@lru_cache(maxsize=1)
+def get_template_env() -> Environment:
+    """
+    Get Jinja2 environment with caching.
+
+    Returns:
+        Environment: Configured Jinja2 environment.
+    """
+    template_dir = Path(__file__).parent
+    return Environment(loader=FileSystemLoader(template_dir))
+
+def generate_alert(
+    alert_type: str,
+    alert_title: str,
+    alert_message: str,
+    file_names: Optional[List[str]] = None,
+    alert_link: Optional[str] = None,
+    table_data: Optional[List[Dict[str, Any]]] = None) -> str:
     """
     Generate an HTML alert message using a Jinja template.
 
     Args:
-        alert_type (str): The type of alert (e.g., 'warning', 'danger', 'info', 'success').
-        alert_title (str): The title of the alert message.
-        alert_message (str): The main content of the alert message.
-        file_names (Optional[List[str]]): List of file names to include in the alert.
-        alert_link (Optional[str]): A link to include in the alert.
+        alert_type (str): Type of alert ('success', 'warning', 'danger', 'info')
+        alert_title (str): Title of the alert
+        alert_message (str): Main message content
+        file_names (Optional[List[str]]): List of processed file names
+        alert_link (Optional[str]): URL for the detail button
+        table_data (Optional[List[Dict[str, Any]]]): List of dictionaries containing the table data where dict keys are column headers
 
     Returns:
-        str: An HTML string representing the alert message.
+        str: Rendered HTML template
     """
-    alert_color = ALERT_COLORS.get(alert_type, '#333333')
-
-    template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '.'))
-    env = Environment(loader=FileSystemLoader(template_dir))
+    alert_color = EmailConstants.ALERT_COLORS.get(alert_type, '#333333')
+    env = get_template_env()
     template = env.get_template('./template/alert_template.html')
 
-    html_output = template.render(
-        title='Alerta de Processos ETL',
+    # Extract headers from the first row if table data exists
+    table_headers = list(table_data[0].keys()) if table_data else None
+
+    return template.render(
+        html_title='Alert Notification',
         alert_type=alert_type,
         alert_title=alert_title,
         alert_message=alert_message,
         file_names=file_names,
         alert_link=alert_link,
-        alert_color=alert_color
+        alert_color=alert_color,
+        table_headers=table_headers,
+        table_data=table_data
     )
 
-    return html_output
-
-def send_email_template(smtp_configs: Dict[str, str], report_config: Dict[str, Union[str, List[str]]], alert_type: str, alert_title: str, alert_message: str) -> None:
+def send_email_template(smtp_configs: Dict[str, str],
+    report_config: Dict[str, Union[str, List[str]]],
+    alert_type: str,
+    alert_title: str,
+    alert_message: str,
+    attachment_paths: Optional[List[str]] = None,
+    file_names: Optional[List[str]] = None,
+    alert_link: Optional[str] = None,
+    table_data: Optional[List[Dict[str, Any]]] = None) -> bool:
     """
-    Send an email notification based on the outcome of the file processing.
-    It generates an alert and sends the email based on the processing status
-    (success or warning).
+    Send an email notification with a template.
 
     Args:
-        smtp_configs (Dict[str, str]): Dictionary containing SMTP server configuration.
-        report_config (Dict[str, Union[str, List[str]]]): Dictionary containing email notification configuration.
-        alert_type (str): Type of alert (success or warning).
-        alert_title (str): Title of the alert message.
-        alert_message (str): Main message content of the alert.
-    """
-    from_mail = report_config.get("from_mail")
-    to = report_config.get("to")
-    subject = report_config.get("subject")
-    cc_mail = report_config.get("cc")
+        smtp_configs: SMTP server configuration
+        report_config: Email report configuration
+        alert_type: Type of alert ('success', 'warning', 'danger', 'info')
+        alert_title: Title of the alert
+        alert_message: Main message content
+        attachment_paths: List of file paths to attach
+        file_names: List of processed file names to display
+        alert_link: URL for the detail button
+        table_data: List of dictionaries containing the table data where dict keys are column headers
 
-    message_body = generate_alert(alert_type, alert_title, alert_message)
-    logging.info(f"Sending email notification to {to} with subject: {subject}")
-    send_email(smtp_configs, to, subject, message_body, html_body=True, cc=cc_mail, from_address=from_mail)
+    Returns:
+        bool: True if email was sent successfully, False otherwise
+    """
+    try:
+        message_body = generate_alert(
+            alert_type=alert_type,
+            alert_title=alert_title,
+            alert_message=alert_message,
+            file_names=file_names,
+            alert_link=alert_link,
+            table_data=table_data
+        )
+
+        logger.info(f"Sending template email notification to {report_config['to']}")
+
+        return send_email(
+            smtp_configs,
+            report_config['to'],
+            report_config['subject'],
+            message_body,
+            html_body=True,
+            cc=report_config.get('cc'),
+            from_address=report_config.get('from_mail'),
+            attachment_paths=attachment_paths
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to send template email: {str(e)}")
+        return False
 
 def cleanup_connection(smtp_server: Optional[smtplib.SMTP]) -> None:
     """
     Closes the connection to the SMTP server.
-
-    Args:
-        smtp_server (Optional[smtplib.SMTP]): The SMTP server object.
     """
     if smtp_server:
         try:
             smtp_server.quit()
         except smtplib.SMTPException as e:
-            logging.error(f"Error closing SMTP connection: {str(e)}")
+            logger.error(f"Error closing SMTP connection: {str(e)}")

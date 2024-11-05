@@ -8,23 +8,48 @@ def main():
     ini_configs.read('config.ini')
     smtp_configs = dict(ini_configs.items("SMPT"))
 
+    table_data = [
+        {
+            'Product': 'Product A',
+            'Units Sold': '1,200',
+            'Revenue': '$24,000',
+            'Growth': '+15%'
+        },
+        {
+            'Product': 'Product B',
+            'Units Sold': '800',
+            'Revenue': '$32,000',
+            'Growth': '+8%'
+        },
+        {
+            'Product': 'Product C',
+            'Units Sold': '600',
+            'Revenue': '$18,000',
+            'Growth': '-3%'
+        }
+    ]
+
     # Define the email parameters.
     email_details = {
-        'to': 'your.email@server.xpto',
+        'to': 'joselito.coutinho@cvt.cv',
         'subject': 'Test Email',
         'message_body': '<p>This is a test email.</p>',
-        'html_body': False,
+        'html_body': True,
         'attachment_paths': ['pdf-sample.pdf'],
         'cc': [],
         'bcc': [],
-        'from_address': 'someone.email@server.xpto'
+        'from_address': 'DSI-DEV-RPA@cvt.cv'
     }
 
-    # Define the alert parameters for the email template.
+    # Define the alert parameters for the email template with all options
     alert_info = {
-        'alert_type': 'success',
+        'alert_type': 'info',  # Options: 'success', 'warning', 'error'
         'alert_title': 'Test Alert',
-        'alert_message': 'This is a test alert message.'
+        'alert_message': 'This is a test alert message.',
+        'attachment_paths': ['pdf-sample.pdf'],
+        'table_data': table_data,
+        'file_names': ['report1.csv', 'report2.xlsx'],  # Files to mention in the alert message
+        'alert_link': 'https://your-dashboard-link.com'  # Optional link in the alert
     }
 
     # Define the report configuration.
