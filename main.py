@@ -36,14 +36,14 @@ def main():
         'message_body': '<p>This is a test email.</p>',
         'html_body': True,
         'attachment_paths': ['pdf-sample.pdf'],
-        'cc': [],
+        'cc': ["eric.tavares@cvt.cv"],
         'bcc': [],
         'from_address': 'DSI-DEV-RPA@cvt.cv'
     }
 
     # Define the alert parameters for the email template with all options
     alert_info = {
-        'alert_type': 'info',  # Options: 'success', 'warning', 'error'
+        'alert_type': 'success',  # Options: 'success', 'warning', 'error'
         'alert_title': 'Test Alert',
         'alert_message': 'This is a test alert message.',
         'attachment_paths': ['pdf-sample.pdf'],
