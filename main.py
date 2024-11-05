@@ -6,7 +6,7 @@ def main():
     # Load configuration settings from ini file.
     ini_configs = configparser.ConfigParser()
     ini_configs.read('config.ini')
-    smtp_configs = dict(ini_configs.items("SMPT"))
+    smtp_configs = dict(ini_configs.items("SMTP"))
 
     table_data = [
         {
