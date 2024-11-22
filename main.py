@@ -69,7 +69,17 @@ def main():
         'cc': email_details['cc']
     }
 
-
+    # Define file status information
+    file_data = {
+        'data1.csv': {
+            'status': 'Completed',
+            'metadata': '2.5 MB, 1,500 records'
+        },
+        'data2.xlsx': {
+            'status': 'Processing',
+            'metadata': '1.8 MB, 800 records'
+        }
+    }
 
     # Send the regular email
     email_sender.send_email(**email_details)
@@ -83,10 +93,12 @@ def main():
         table_data=table_data,
         company_logo='logo.png',  # Optional
         summary_data=summary_data,
-        table_summary=['Total', '3,800', '00:13:08'],
+        table_summary=['Total', '','3,800', '00:13:08'],
         total_records=2,
         show_pagination=True,
-        file_status={'data1.csv': 'Processed', 'data2.csv': 'Completed'},
+        file_names=list(file_data.keys()),
+        file_status={name: data['status'] for name, data in file_data.items()},
+        file_metadata={name: data['metadata'] for name, data in file_data.items()},
         error_details=None,  # Optional, for error cases
         action_button={
             'url': 'https://your-dashboard.com',

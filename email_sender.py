@@ -325,6 +325,7 @@ class EmailSender:
         total_records: Optional[int] = None,
         show_pagination: bool = False,
         file_status: Optional[Dict[str, str]] = None,
+        file_metadata: Optional[Dict[str, str]] = None,
         error_details: Optional[str] = None,
         action_button: Optional[Dict[str, str]] = None,
         environment: Optional[str] = None,
@@ -338,8 +339,19 @@ class EmailSender:
             alert_title (str): Title of the alert
             alert_message (str): Main message content
             file_names (Optional[List[str]]): List of processed file names
-            alert_link (Optional[str]): URL for the detail button
+            alert_link (Optional[str]): URL for detail button
             table_data (Optional[List[Dict[str, Any]]]): Table data as list of dictionaries
+            company_logo (Optional[str]): Path to company logo
+            summary_data (Optional[List[Dict[str, Any]]]): Summary statistics
+            table_summary (Optional[List[str]]): Summary row for table
+            total_records (Optional[int]): Total number of records
+            show_pagination (bool): Whether to show pagination info
+            file_status (Optional[Dict[str, str]]): Status for each file
+            file_metadata (Optional[Dict[str, str]]): Additional metadata for each file
+            error_details (Optional[str]): Error message details
+            action_button (Optional[Dict[str, str]]): Action button config
+            environment (Optional[str]): Environment name
+            timestamp (Optional[str]): Timestamp for the alert
 
         Returns:
             str: Rendered HTML template
@@ -366,6 +378,7 @@ class EmailSender:
             total_records=total_records,
             show_pagination=show_pagination,
             file_status=file_status,
+            file_metadata=file_metadata,
             error_details=error_details,
             action_button=action_button,
             environment=environment,
@@ -447,6 +460,7 @@ class EmailSender:
         total_records: Optional[int] = None,
         show_pagination: bool = False,
         file_status: Optional[Dict[str, str]] = None,
+        file_metadata: Optional[Dict[str, str]] = None,
         error_details: Optional[str] = None,
         action_button: Optional[Dict[str, str]] = None,
         environment: Optional[str] = None,
@@ -464,6 +478,17 @@ class EmailSender:
             file_names (Optional[List[str]]): List of processed file names
             alert_link (Optional[str]): URL for detail button
             table_data (Optional[List[Dict[str, Any]]]): Table data
+            company_logo (Optional[str]): Path to company logo
+            summary_data (Optional[List[Dict[str, Any]]]): Summary statistics
+            table_summary (Optional[List[str]]): Summary row for table
+            total_records (Optional[int]): Total number of records
+            show_pagination (bool): Whether to show pagination info
+            file_status (Optional[Dict[str, str]]): Status for each file
+            file_metadata (Optional[Dict[str, str]]): Additional metadata for each file
+            error_details (Optional[str]): Error message details
+            action_button (Optional[Dict[str, str]]): Action button config
+            environment (Optional[str]): Environment name
+            timestamp (Optional[str]): Timestamp for the alert
 
         Returns:
             bool: True if email was sent successfully, False otherwise
@@ -482,6 +507,7 @@ class EmailSender:
                 total_records=total_records,
                 show_pagination=show_pagination,
                 file_status=file_status,
+                file_metadata=file_metadata,
                 error_details=error_details,
                 action_button=action_button,
                 environment=environment,
