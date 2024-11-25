@@ -87,55 +87,55 @@
                     {% endif %}
 
                     {% if table_data and table_headers %}
-                    <!-- Table Data -->
-                    <tr>
-                        <td style="padding: 0 20px;">
-                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #e2e8f0; border-collapse: collapse; width: 100%;">
-                                <thead>
-                                    <tr>
-                                        {% for header in table_headers %}
-                                        <th style="background-color: {{ alert_color }}; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; text-align: left; padding: 12px; border: 1px solid {{ alert_color }};">
-                                            {{ header }}
-                                        </th>
+                        <!-- Table Data -->
+                        <tr>
+                            <td style="padding: 0 20px;">
+                                <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #e2e8f0; border-collapse: collapse; width: 100%;">
+                                    <thead>
+                                        <tr>
+                                            {% for header in table_headers %}
+                                            <th style="background-color: {{ alert_color }}; color: #ffffff; font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; text-align: left; padding: 12px; border: 1px solid {{ alert_color }};">
+                                                {{ header }}
+                                            </th>
+                                            {% endfor %}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for row in table_data %}
+                                        <tr {% if loop.index is even %}style="background-color: #f8fafc;"{% endif %}>
+                                            {% for header in table_headers %}
+                                            <td style="font-family: Arial, sans-serif; font-size: 14px; color: #4a5568; padding: 12px; border: 1px solid #e2e8f0;">
+                                                {{ row[header] }}
+                                            </td>
+                                            {% endfor %}
+                                        </tr>
                                         {% endfor %}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for row in table_data %}
-                                    <tr {% if loop.index is even %}style="background-color: #f8fafc;"{% endif %}>
-                                        {% for header in table_headers %}
-                                        <td style="font-family: Arial, sans-serif; font-size: 14px; color: #4a5568; padding: 12px; border: 1px solid #e2e8f0;">
-                                            {{ row[header] }}
-                                        </td>
-                                        {% endfor %}
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                                {% if table_summary %}
-                                <tfoot>
-                                    <tr style="background-color: #f8fafc;">
-                                        {% for value in table_summary %}
-                                        <td style="font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; color: #4a5568; padding: 12px; border: 1px solid #e2e8f0;">
-                                            {{ value }}
-                                        </td>
-                                        {% endfor %}
-                                    </tr>
-                                </tfoot>
-                                {% endif %}
-                            </table>
-                        </td>
-                    </tr>
+                                    </tbody>
+                                    {% if table_summary %}
+                                    <tfoot>
+                                        <tr style="background-color: #f8fafc;">
+                                            {% for value in table_summary %}
+                                            <td style="font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; color: #4a5568; padding: 12px; border: 1px solid #e2e8f0;">
+                                                {{ value }}
+                                            </td>
+                                            {% endfor %}
+                                        </tr>
+                                    </tfoot>
+                                    {% endif %}
+                                </table>
+                            </td>
+                        </tr>
 
-                    {% if show_pagination and total_records %}
-                    <!-- Pagination Info -->
-                    <tr>
-                        <td style="padding: 10px 20px 20px 20px; text-align: right;">
-                            <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px; color: #718096;">
-                                Mostrando {{ table_data|length }} de {{ total_records }} registros
-                            </p>
-                        </td>
-                    </tr>
-                    {% endif %}
+                        {% if show_pagination and total_records %}
+                        <!-- Pagination Info -->
+                        <tr>
+                            <td style="padding: 10px 20px 20px 20px; text-align: right;">
+                                <p style="margin: 0; font-family: Arial, sans-serif; font-size: 12px; color: #718096;">
+                                    Mostrando {{ table_data|length }} de {{ total_records }} registros
+                                </p>
+                            </td>
+                        </tr>
+                        {% endif %}
                     {% endif %}
 
                     {% if file_names %}

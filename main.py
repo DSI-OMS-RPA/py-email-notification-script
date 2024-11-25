@@ -61,14 +61,6 @@ def main():
         'cc': email_details['cc']
     }
 
-    # Define the report configuration
-    report_config = {
-        'from_mail': email_details['from_address'],
-        'to': email_details['to'],
-        'subject': alert_info['alert_title'],
-        'cc': email_details['cc']
-    }
-
     # Define file status information
     file_data = {
         'data1.csv': {
@@ -90,6 +82,7 @@ def main():
         alert_type=alert_info['alert_type'],
         alert_title=alert_info['alert_title'],
         alert_message=alert_info['alert_message'],
+        attachment_paths=['pdf-sample.pdf'],
         table_data=table_data,
         company_logo='logo.png',  # Optional
         summary_data=summary_data,
